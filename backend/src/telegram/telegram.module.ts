@@ -6,6 +6,7 @@ import { PrismaModule } from '../common/prisma/prisma.module';
 import { DeadlinesModule } from '../deadlines/deadlines.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { TenantsModule } from '../tenants/tenants.module';
+import { TelegramController } from './telegram.controller';
 import { TelegramService } from './telegram.service';
 import { TelegramUpdate } from './telegram.update';
 
@@ -19,6 +20,7 @@ import { TelegramUpdate } from './telegram.update';
     PrismaModule,
     forwardRef(() => DeadlinesModule),
   ],
+  controllers: [TelegramController],
   providers: [TelegramService, TelegramUpdate],
   exports: [TelegramService],
 })

@@ -34,7 +34,7 @@ export interface BrainStatus {
   };
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3003/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '/api').replace(/\/$/, '');
 
 async function buildError(response: Response) {
   const text = await response.text();
@@ -165,3 +165,5 @@ export const apiClient = {
     }>('/admin/analytics', {}, token);
   },
 };
+
+

@@ -321,8 +321,17 @@ export class TelegramUpdate implements OnModuleInit {
 
     const configured = this.configService.get<string>('PILOT_TENANT_ID')?.trim();
     if (configured) {
-      this.pilotTenantId = configured;
-      return configured;
+      const tenantById = await this.prisma.tenant.findUnique({
+        where: { id: configured },
+        select: { id: true },
+      });
+
+      if (tenantById) {
+        this.pilotTenantId = tenantById.id;
+        return tenantById.id;
+      }
+
+      this.logger.warn(`Configured PILOT_TENANT_ID=${configured} was not found; falling back to slug lookup`);
     }
 
     const slug = this.configService.get<string>('PILOT_TENANT_SLUG', 'bg-studio-ai');

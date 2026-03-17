@@ -16,9 +16,18 @@
     "lint": "npm --workspace backend run lint && npm --workspace frontend run lint",
     "test": "npm --workspace backend run test",
     "test:backend": "npm --workspace backend run test",
+    "db:generate": "npm --workspace backend run prisma:generate",
+    "db:migrate": "npm --workspace backend run prisma:migrate",
+    "db:deploy": "npm --workspace backend run prisma:deploy",
+    "db:status": "npm --workspace backend run prisma:status",
     "infra:up": "docker compose up -d postgres redis",
     "infra:down": "docker compose down",
-    "seed": "npm --workspace backend run prisma:seed"
+    "bootstrap:dev": "npm run db:generate && npm run db:deploy && npm run seed",
+    "seed": "npm --workspace backend run prisma:seed",
+    "prod:build": "docker compose -f docker-compose.prod.yml build",
+    "prod:up": "docker compose -f docker-compose.prod.yml up -d",
+    "prod:down": "docker compose -f docker-compose.prod.yml down",
+    "prod:logs": "docker compose -f docker-compose.prod.yml logs -f"
   },
   "engines": {
     "node": ">=20.0.0"

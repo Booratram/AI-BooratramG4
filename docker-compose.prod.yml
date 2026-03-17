@@ -1,11 +1,14 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
+    container_name: booratramg4-prod-postgres
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-booratramg4}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d booratramg4"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-booratramg4}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -14,20 +17,31 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: booratramg4-prod-redis
     restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
+    volumes:
+      - redis-data:/data
 
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
       target: production
+    container_name: booratramg4-prod-backend
+    restart: unless-stopped
     env_file:
       - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      DATABASE_URL: ${DATABASE_URL_DOCKER:-postgresql://postgres:password@postgres:5432/booratramg4}
+      REDIS_URL: ${REDIS_URL_DOCKER:-redis://redis:6379}
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,16 +49,30 @@ services:
         condition: service_healthy
     ports:
       - "3003:3003"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3003/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
       target: production
+    container_name: booratramg4-prod-frontend
+    restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "8080:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgres-data:
+  redis-data:

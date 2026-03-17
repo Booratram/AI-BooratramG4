@@ -4,18 +4,31 @@ import { Telegraf } from 'telegraf';
 import { plainTextFallback } from './telegram.helpers';
 import { TelegramContext } from './telegram.types';
 
+type TelegramTransport = 'disabled' | 'polling' | 'webhook';
+
 @Injectable()
 export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TelegramService.name);
   public readonly bot?: Telegraf<TelegramContext>;
   private readonly ownerTelegramId?: string;
+  private readonly webhookSecret?: string;
+  private readonly backendPublicUrl?: string;
+  private readonly transport: TelegramTransport;
 
   constructor(private readonly configService: ConfigService) {
     const token = this.configService.get<string>('PILOT_TELEGRAM_BOT_TOKEN')?.trim();
     this.ownerTelegramId = this.configService.get<string>('PILOT_TELEGRAM_OWNER_ID')?.trim() || undefined;
+    this.webhookSecret = this.configService.get<string>('TELEGRAM_WEBHOOK_SECRET')?.trim() || undefined;
+    this.backendPublicUrl = this.normalizeBaseUrl(
+      this.configService.get<string>('BACKEND_PUBLIC_URL')?.trim(),
+    );
 
-    if (!token) {
-      this.logger.warn('PILOT_TELEGRAM_BOT_TOKEN is not configured; Telegram runtime is disabled');
+    const requestedTransport =
+      this.configService.get<string>('TELEGRAM_TRANSPORT', 'auto')?.trim().toLowerCase() ?? 'auto';
+    this.transport = this.resolveTransport(requestedTransport, Boolean(token), Boolean(this.backendPublicUrl));
+
+    if (!token || this.transport === 'disabled') {
+      this.logger.warn('Telegram runtime is disabled by configuration');
       return;
     }
 
@@ -30,8 +43,24 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    if ((process.env.NODE_ENV ?? 'development') === 'production') {
-      this.logger.log('Telegram runtime initialized in production mode; webhook is expected');
+    if (this.transport === 'webhook') {
+      const webhookUrl = this.getWebhookUrl();
+      if (!webhookUrl) {
+        this.logger.warn('Telegram webhook URL is unavailable; runtime stays disabled');
+        return;
+      }
+
+      try {
+        await this.bot.telegram.setWebhook(
+          webhookUrl,
+          this.webhookSecret ? { secret_token: this.webhookSecret } : undefined,
+        );
+        this.logger.log(`Telegram bot configured in webhook mode: ${webhookUrl}`);
+      } catch (error) {
+        this.logger.error(
+          `Telegram webhook setup failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
       return;
     }
 
@@ -53,9 +82,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
+      if (this.transport === 'webhook') {
+        await this.bot.telegram.deleteWebhook();
+      }
       this.bot.stop('SIGTERM');
     } catch {
-      // Bot may not be running when the app context is created in production mode for smoke tests.
+      // The bot may not be running in test or partial startup scenarios.
     }
   }
 
@@ -65,6 +97,30 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
   getOwnerTelegramId() {
     return this.ownerTelegramId;
+  }
+
+  getStatus() {
+    return {
+      enabled: Boolean(this.bot),
+      transport: this.transport,
+      ownerConfigured: Boolean(this.ownerTelegramId),
+      webhookConfigured: this.transport === 'webhook',
+      webhookUrl: this.transport === 'webhook' ? this.getWebhookUrl() : null,
+    };
+  }
+
+  async handleWebhookUpdate(update: Record<string, unknown>, secretToken?: string) {
+    if (!this.bot || this.transport !== 'webhook') {
+      return false;
+    }
+
+    if (this.webhookSecret && secretToken !== this.webhookSecret) {
+      this.logger.warn('Rejected Telegram webhook request with invalid secret token');
+      return false;
+    }
+
+    await this.bot.handleUpdate(update as never);
+    return true;
   }
 
   async sendMessage(chatId: string | number, text: string, extra: Record<string, unknown> = {}) {
@@ -101,5 +157,42 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
 
     return this.sendMessage(this.ownerTelegramId, text);
+  }
+
+  private resolveTransport(requestedTransport: string, hasToken: boolean, hasPublicUrl: boolean): TelegramTransport {
+    if (!hasToken || requestedTransport === 'off' || requestedTransport === 'disabled') {
+      return 'disabled';
+    }
+
+    if (requestedTransport === 'polling') {
+      return 'polling';
+    }
+
+    if (requestedTransport === 'webhook') {
+      if (hasPublicUrl) {
+        return 'webhook';
+      }
+
+      this.logger.warn('TELEGRAM_TRANSPORT=webhook requested without BACKEND_PUBLIC_URL; falling back to polling');
+      return 'polling';
+    }
+
+    return hasPublicUrl ? 'webhook' : 'polling';
+  }
+
+  private getWebhookUrl() {
+    if (!this.backendPublicUrl) {
+      return undefined;
+    }
+
+    return `${this.backendPublicUrl}/api/telegram/webhook`;
+  }
+
+  private normalizeBaseUrl(value?: string) {
+    if (!value) {
+      return undefined;
+    }
+
+    return value.replace(/\/+$/, '');
   }
 }
