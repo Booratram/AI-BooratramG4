@@ -1,0 +1,320 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+model Tenant {
+  id               String         @id @default(cuid())
+  slug             String         @unique
+  name             String
+  industry         String?
+  plan             Plan           @default(PILOT)
+  status           TenantStatus   @default(ACTIVE)
+  brainName        String         @default("G4")
+  brainPersona     String?        @db.Text
+  brainContext     String?        @db.Text
+  language         String         @default("ru")
+  logoUrl          String?
+  primaryColor     String?        @default("#6366f1")
+  customDomain     String?        @unique
+  telegramBotToken String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  users            User[]
+  projects         Project[]
+  events           CalendarEvent[]
+  deadlines        Deadline[]
+  tasks            Task[]
+  cases            Case[]
+  memories         Memory[]
+  conversations    Conversation[]
+  refreshTokens    RefreshToken[]
+  aiRequests       AiRequestLog[]
+}
+
+enum Plan {
+  PILOT
+  STARTER
+  BUSINESS
+  ENTERPRISE
+}
+
+enum TenantStatus {
+  ONBOARDING
+  ACTIVE
+  SUSPENDED
+  CHURNED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String
+  telegramId    String?
+  password      String
+  role          UserRole       @default(MEMBER)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  refreshTokens RefreshToken[]
+  aiRequests    AiRequestLog[]
+
+  @@unique([email, tenantId])
+  @@index([tenantId, role])
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  MEMBER
+}
+
+model RefreshToken {
+  id         String    @id
+  tokenHash  String
+  expiresAt  DateTime
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+  revokedAt  DateTime?
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, userId])
+  @@index([expiresAt])
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  metadata    Json?
+  priority    Int           @default(1)
+  startDate   DateTime?
+  targetDate  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  tenantId    String
+  tenant      Tenant        @relation(fields: [tenantId], references: [id])
+  events      CalendarEvent[]
+  deadlines   Deadline[]
+  cases       Case[]
+  tasks       Task[]
+
+  @@index([tenantId, status])
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+model CalendarEvent {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  startAt     DateTime
+  endAt       DateTime?
+  allDay      Boolean   @default(false)
+  type        EventType @default(GENERAL)
+  priority    Priority  @default(MEDIUM)
+  reminder    Int?
+  rrule       String?
+  createdAt   DateTime  @default(now())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id])
+
+  @@index([tenantId, startAt])
+}
+
+enum EventType {
+  GENERAL
+  MEETING
+  DEADLINE
+  LAUNCH
+  REVIEW
+  PERSONAL
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Deadline {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  dueAt       DateTime
+  status      DeadlineStatus @default(PENDING)
+  priority    Priority       @default(HIGH)
+  completedAt DateTime?
+  createdAt   DateTime       @default(now())
+  tenantId    String
+  tenant      Tenant         @relation(fields: [tenantId], references: [id])
+  projectId   String?
+  project     Project?       @relation(fields: [projectId], references: [id])
+
+  @@index([tenantId, dueAt])
+}
+
+enum DeadlineStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  dueAt       DateTime?
+  tags        String[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  tenantId    String
+  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  projectId   String?
+  project     Project?   @relation(fields: [projectId], references: [id])
+  parentId    String?
+  parent      Task?      @relation("subtasks", fields: [parentId], references: [id])
+  subtasks    Task[]     @relation("subtasks")
+
+  @@index([tenantId, status])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+  CANCELLED
+}
+
+model Case {
+  id        String       @id @default(cuid())
+  title     String
+  context   String       @db.Text
+  problem   String       @db.Text
+  solution  String       @db.Text
+  outcome   String?      @db.Text
+  lessons   String?      @db.Text
+  tags      String[]
+  category  CaseCategory
+  industry  String?
+  impact    Int?
+  isPublic  Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  tenantId  String
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  projectId String?
+  project   Project?     @relation(fields: [projectId], references: [id])
+  memories  Memory[]
+
+  @@index([tenantId, category])
+}
+
+enum CaseCategory {
+  TECHNICAL
+  BUSINESS
+  OPERATIONS
+  PRODUCT
+  SALES
+  MARKETING
+  FINANCE
+  TEAM
+  CLIENT
+  CRISIS
+  MISTAKE
+  WIN
+}
+
+model Memory {
+  id        String                      @id @default(cuid())
+  content   String                      @db.Text
+  embedding Unsupported("vector(1536)")?
+  source    MemorySource
+  sourceId  String?
+  metadata  Json?
+  createdAt DateTime                    @default(now())
+  tenantId  String
+  tenant    Tenant                      @relation(fields: [tenantId], references: [id])
+  caseId    String?
+  case      Case?                       @relation(fields: [caseId], references: [id])
+
+  @@index([tenantId])
+}
+
+enum MemorySource {
+  CASE
+  CONVERSATION
+  ONBOARDING_INTERVIEW
+  PROJECT_UPDATE
+  MANUAL
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  messages  Json
+  channel   Channel  @default(WEB)
+  summary   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+}
+
+model AiRequestLog {
+  id                 String          @id @default(cuid())
+  input              String          @db.Text
+  response           String?         @db.Text
+  model              String?
+  status             AiRequestStatus @default(SUCCESS)
+  error              String?
+  responseTimeMs     Int?
+  memoriesUsed       Int?
+  promptTokens       Int?
+  completionTokens   Int?
+  channel            Channel         @default(WEB)
+  createdAt          DateTime        @default(now())
+  tenantId           String
+  tenant             Tenant          @relation(fields: [tenantId], references: [id])
+  userId             String?
+  user               User?           @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([status])
+}
+
+enum AiRequestStatus {
+  SUCCESS
+  ERROR
+}
+
+enum Channel {
+  WEB
+  TELEGRAM
+}
