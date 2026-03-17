@@ -11,10 +11,13 @@ interface OpenAIEmbeddingResponse {
 }
 
 export interface EmbeddingsStatus {
-  provider: 'deepseek' | 'openai';
+  configuredProvider: 'auto' | 'openai' | 'deterministic';
+  effectiveProvider: 'openai' | 'deterministic';
   live: boolean;
   mode: 'deterministic' | 'openai';
   model?: string;
+  baseUrl?: string;
+  fallbackReason?: string;
 }
 
 @Injectable()
@@ -24,40 +27,92 @@ export class EmbeddingsService {
   async embed(text: string): Promise<number[]> {
     const provider = this.getProvider();
 
-    if (provider === 'openai' && this.isOpenAiConfigured()) {
-      try {
-        return await this.openAiEmbedding(text);
-      } catch {
-        return this.deterministicFallback(text);
-      }
+    if (provider === 'deterministic') {
+      return this.deterministicFallback(text);
     }
 
-    return this.deterministicFallback(text);
+    if (!this.isOpenAiConfigured()) {
+      if (provider === 'openai') {
+        throw new ServiceUnavailableException('OPENAI_API_KEY is not configured');
+      }
+
+      return this.deterministicFallback(text);
+    }
+
+    try {
+      return await this.openAiEmbedding(text);
+    } catch (error) {
+      if (provider === 'openai') {
+        throw error;
+      }
+
+      return this.deterministicFallback(text);
+    }
   }
 
   getStatus(): EmbeddingsStatus {
     const provider = this.getProvider();
-    const live = provider === 'openai' && this.isOpenAiConfigured();
+    const live = provider !== 'deterministic' && this.isOpenAiConfigured();
+    const effectiveProvider = live ? 'openai' : 'deterministic';
 
     return {
-      provider,
+      configuredProvider: provider,
+      effectiveProvider,
       live,
-      mode: live ? 'openai' : 'deterministic',
+      mode: effectiveProvider,
       model: live
         ? this.configService.get<string>('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')
         : undefined,
+      baseUrl: live ? this.getOpenAiBaseUrl() : undefined,
+      fallbackReason: this.getFallbackReason(provider, live),
     };
   }
 
-  private getProvider(): 'deepseek' | 'openai' {
-    return this.configService.get<string>('EMBEDDING_PROVIDER', 'deepseek') === 'openai'
-      ? 'openai'
-      : 'deepseek';
+  private getProvider(): 'auto' | 'openai' | 'deterministic' {
+    const provider = this.configService.get<string>('EMBEDDING_PROVIDER', 'auto')?.trim().toLowerCase();
+
+    switch (provider) {
+      case 'openai':
+        return 'openai';
+      case 'deterministic':
+        return 'deterministic';
+      case 'deepseek':
+        return 'auto';
+      case 'auto':
+      default:
+        return 'auto';
+    }
+  }
+
+  private getFallbackReason(
+    provider: 'auto' | 'openai' | 'deterministic',
+    live: boolean,
+  ) {
+    if (live) {
+      return undefined;
+    }
+
+    if (provider === 'deterministic') {
+      return 'EMBEDDING_PROVIDER=deterministic forces hashed fallback vectors';
+    }
+
+    return 'OPENAI_API_KEY is missing or placeholder, so deterministic fallback is active';
   }
 
   private isOpenAiConfigured() {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     return Boolean(apiKey && !apiKey.startsWith('sk-...'));
+  }
+
+  private getOpenAiBaseUrl() {
+    return this.configService
+      .get<string>('OPENAI_BASE_URL', 'https://api.openai.com/v1')
+      .replace(/\/$/, '');
+  }
+
+  private getOpenAiTimeoutMs() {
+    const value = Number(this.configService.get<string>('OPENAI_EMBEDDING_TIMEOUT_MS', '30000'));
+    return Number.isFinite(value) && value > 0 ? value : 30000;
   }
 
   private async openAiEmbedding(text: string): Promise<number[]> {
@@ -71,7 +126,7 @@ export class EmbeddingsService {
       throw new ServiceUnavailableException('OPENAI_API_KEY is not configured');
     }
 
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
+    const response = await fetch(`${this.getOpenAiBaseUrl()}/embeddings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -81,7 +136,7 @@ export class EmbeddingsService {
         input: text,
         model,
       }),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(this.getOpenAiTimeoutMs()),
     });
 
     const payload = await this.parseResponse(response);

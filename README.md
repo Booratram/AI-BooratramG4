@@ -12,10 +12,12 @@ The current baseline already includes:
 - multi-tenant isolation by `tenantId`
 - JWT auth with `SUPER_ADMIN`, `TENANT_ADMIN`, `MEMBER`
 - DeepSeek-oriented AI core with prompt builder, conversation logging, and memory search
+- OpenAI-backed live embeddings with deterministic fallback
 - projects, tasks, calendar, deadlines, cases, knowledge, onboarding, admin, Telegram, notifications
 - Bull/BullMQ deadline queue scaffold on Redis
 - Docker Compose for local and production bootstrap
-- CI workflow for generate/build/test
+- CI workflow for generate/build/test/e2e smoke
+- GitHub Actions deploy workflow with server-side rollback scripts
 
 ## Prerequisites
 
@@ -79,6 +81,9 @@ npm run db:generate
 npm run db:migrate
 npm run db:deploy
 npm run db:status
+npm run seed
+npm run embeddings:backfill
+npm run e2e:playwright
 npm run infra:up
 npm run infra:down
 npm run prod:build
@@ -118,6 +123,7 @@ Telegram is configurable through env vars:
 - `TELEGRAM_TRANSPORT=auto|polling|webhook|disabled`
 - `BACKEND_PUBLIC_URL`
 - `TELEGRAM_WEBHOOK_SECRET`
+- `TELEGRAM_SKIP_REMOTE_API=true` for local/e2e webhook tests without real Telegram API calls
 
 Transport behavior:
 
@@ -125,6 +131,50 @@ Transport behavior:
 - `polling`: always use polling
 - `webhook`: require public backend URL, otherwise fallback to polling
 - `disabled`: turn Telegram runtime off
+
+## Embeddings
+
+Embeddings support three modes through `EMBEDDING_PROVIDER`:
+
+- `auto`: use OpenAI embeddings when `OPENAI_API_KEY` is configured, otherwise deterministic fallback
+- `openai`: strict live mode, fail requests when the provider is unavailable
+- `deterministic`: explicit local hashed vectors for bootstrap and offline work
+
+Relevant env vars:
+
+- `OPENAI_API_KEY`
+- `OPENAI_BASE_URL`
+- `OPENAI_EMBEDDING_MODEL`
+- `OPENAI_EMBEDDING_TIMEOUT_MS`
+
+After enabling live embeddings on an existing environment, backfill memory vectors:
+
+```bash
+npm run embeddings:backfill
+```
+
+Optional backfill filters:
+
+- `MEMORY_EMBED_BACKFILL_TENANT_ID`
+- `MEMORY_EMBED_BACKFILL_BATCH_SIZE`
+- `MEMORY_EMBED_BACKFILL_LIMIT`
+- `MEMORY_EMBED_BACKFILL_FORCE=true` to allow deterministic rewrite
+
+## Testing
+
+The repository includes a Playwright smoke path that exercises:
+
+- login
+- brain chat
+- Telegram webhook ingestion
+- task creation
+- deadline creation and queue scheduling
+
+Run it locally with:
+
+```bash
+npm run e2e:playwright
+```
 
 ## Production deployment
 
@@ -135,6 +185,8 @@ Production images and Compose baseline are prepared in:
 - `docker-compose.prod.yml`
 - `frontend/nginx.conf`
 - `DEPLOYMENT.md`
+- `ops/deploy/deploy.sh`
+- `ops/deploy/rollback.sh`
 
 Frontend production traffic uses nginx and proxies `/api/*` to the backend container, so the frontend can use `/api` instead of a hardcoded host.
 
@@ -147,6 +199,15 @@ node dist/src/main.js
 
 This means the deployed container expects committed Prisma migrations to be present in the repository.
 
+GitHub deployment automation is prepared in `.github/workflows/deploy.yml`. It expects SSH access to a server where the repository is already cloned and production `.env` is present.
+
+Server-side commands:
+
+```bash
+bash ops/deploy/deploy.sh <sha>
+bash ops/deploy/rollback.sh [sha]
+```
+
 ## Verification
 
 Current baseline is expected to pass:
@@ -154,11 +215,12 @@ Current baseline is expected to pass:
 ```bash
 npm run build
 npm run test
+npm run e2e:playwright
 ```
 
 ## Notes
 
 - Semantic search is always tenant-filtered.
-- DeepSeek chat is live-ready. Embeddings still use deterministic fallback until a dedicated provider is enabled.
+- DeepSeek chat is live-ready. OpenAI embeddings can be enabled live; deterministic fallback remains available for offline bootstrap.
 - Deadline alerts use Redis-backed queue scheduling.
-- Telegram runtime is now prepared for both polling and webhook delivery.
+- Telegram runtime is prepared for both polling and webhook delivery.

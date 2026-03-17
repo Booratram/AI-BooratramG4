@@ -21,9 +21,12 @@
     "db:deploy": "npm --workspace backend run prisma:deploy",
     "db:status": "npm --workspace backend run prisma:status",
     "infra:up": "docker compose up -d postgres redis",
+    "infra:wait": "node scripts/wait-for-infra.mjs",
     "infra:down": "docker compose down",
     "bootstrap:dev": "npm run db:generate && npm run db:deploy && npm run seed",
     "seed": "npm --workspace backend run prisma:seed",
+    "embeddings:backfill": "npm --workspace backend run embeddings:backfill",
+    "e2e:playwright": "npm run build && npm run infra:up && npm run infra:wait && npm run db:deploy && npm run seed && playwright test",
     "prod:build": "docker compose -f docker-compose.prod.yml build",
     "prod:up": "docker compose -f docker-compose.prod.yml up -d",
     "prod:down": "docker compose -f docker-compose.prod.yml down",
@@ -31,5 +34,8 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
   }
 }

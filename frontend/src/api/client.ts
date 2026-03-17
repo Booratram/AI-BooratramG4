@@ -27,10 +27,13 @@ export interface BrainStatus {
     timeoutMs: number;
   };
   embeddings: {
-    provider: 'deepseek' | 'openai';
+    configuredProvider: 'auto' | 'openai' | 'deterministic';
+    effectiveProvider: 'openai' | 'deterministic';
     live: boolean;
     mode: 'deterministic' | 'openai';
     model?: string;
+    baseUrl?: string;
+    fallbackReason?: string;
   };
 }
 
@@ -165,5 +168,3 @@ export const apiClient = {
     }>('/admin/analytics', {}, token);
   },
 };
-
-

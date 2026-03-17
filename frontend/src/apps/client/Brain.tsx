@@ -92,7 +92,15 @@ export function Brain() {
               </div>
               <div>
                 Reasoner: {brainStatus.deepseek.reasonerModel} · embeddings: {brainStatus.embeddings.mode}
+                {' '}({brainStatus.embeddings.effectiveProvider})
               </div>
+              <div>
+                Embedding config: {brainStatus.embeddings.configuredProvider}
+                {brainStatus.embeddings.model ? ` · model: ${brainStatus.embeddings.model}` : ''}
+              </div>
+              {brainStatus.embeddings.fallbackReason ? (
+                <div className="text-coral">Fallback: {brainStatus.embeddings.fallbackReason}</div>
+              ) : null}
             </div>
           ) : null}
           {statusError ? (

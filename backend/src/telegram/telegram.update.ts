@@ -397,6 +397,10 @@ export class TelegramUpdate implements OnModuleInit {
   }
 
   private async typing(ctx: TelegramContext) {
+    if (this.telegramService.getStatus().remoteApiDisabled) {
+      return;
+    }
+
     try {
       await ctx.sendChatAction('typing');
     } catch {
@@ -405,6 +409,14 @@ export class TelegramUpdate implements OnModuleInit {
   }
 
   private async reply(ctx: TelegramContext, text: string) {
+    const chatId = ctx.chat?.id;
+    if (chatId) {
+      const sent = await this.telegramService.sendMessage(chatId, text);
+      if (sent) {
+        return;
+      }
+    }
+
     try {
       await ctx.reply(text, { parse_mode: 'Markdown' });
     } catch {

@@ -14,6 +14,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private readonly webhookSecret?: string;
   private readonly backendPublicUrl?: string;
   private readonly transport: TelegramTransport;
+  private readonly skipRemoteApi: boolean;
 
   constructor(private readonly configService: ConfigService) {
     const token = this.configService.get<string>('PILOT_TELEGRAM_BOT_TOKEN')?.trim();
@@ -22,6 +23,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     this.backendPublicUrl = this.normalizeBaseUrl(
       this.configService.get<string>('BACKEND_PUBLIC_URL')?.trim(),
     );
+    this.skipRemoteApi = this.configService.get<string>('TELEGRAM_SKIP_REMOTE_API', 'false') === 'true';
 
     const requestedTransport =
       this.configService.get<string>('TELEGRAM_TRANSPORT', 'auto')?.trim().toLowerCase() ?? 'auto';
@@ -33,6 +35,18 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.bot = new Telegraf<TelegramContext>(token);
+    if (this.skipRemoteApi) {
+      this.stubRemoteApi();
+      this.bot.botInfo = {
+        id: 1,
+        is_bot: true,
+        first_name: 'BooratramG4',
+        username: 'booratramg4_test_bot',
+        can_join_groups: false,
+        can_read_all_group_messages: false,
+        supports_inline_queries: false,
+      } as never;
+    }
     this.bot.catch((error) => {
       this.logger.error(`Telegram bot error: ${error instanceof Error ? error.message : String(error)}`);
     });
@@ -40,6 +54,11 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     if (!this.bot) {
+      return;
+    }
+
+    if (this.skipRemoteApi) {
+      this.logger.log(`Telegram remote API calls are disabled for transport=${this.transport}`);
       return;
     }
 
@@ -82,7 +101,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      if (this.transport === 'webhook') {
+      if (!this.skipRemoteApi && this.transport === 'webhook') {
         await this.bot.telegram.deleteWebhook();
       }
       this.bot.stop('SIGTERM');
@@ -106,6 +125,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       ownerConfigured: Boolean(this.ownerTelegramId),
       webhookConfigured: this.transport === 'webhook',
       webhookUrl: this.transport === 'webhook' ? this.getWebhookUrl() : null,
+      remoteApiDisabled: this.skipRemoteApi,
     };
   }
 
@@ -194,5 +214,58 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
 
     return value.replace(/\/+$/, '');
+  }
+
+  private stubRemoteApi() {
+    if (!this.bot) {
+      return;
+    }
+
+    const getMe = async () => ({
+      id: 1,
+      is_bot: true,
+      first_name: 'BooratramG4',
+      username: 'booratramg4_test_bot',
+      can_join_groups: false,
+      can_read_all_group_messages: false,
+      supports_inline_queries: false,
+    });
+
+    const sendMessage = async (chatId: string | number, text: string) => ({
+      message_id: Date.now(),
+      date: Math.floor(Date.now() / 1000),
+      chat: {
+        id: chatId,
+        type: 'private',
+      },
+      text,
+    });
+
+    const sendChatAction = async () => true;
+    const setWebhook = async () => true;
+    const deleteWebhook = async () => true;
+    const callApi = async (method: string, payload: Record<string, unknown> = {}) => {
+      switch (method) {
+        case 'getMe':
+          return getMe();
+        case 'sendMessage':
+          return sendMessage(String(payload.chat_id ?? ''), String(payload.text ?? ''));
+        case 'sendChatAction':
+          return sendChatAction();
+        case 'setWebhook':
+          return setWebhook();
+        case 'deleteWebhook':
+          return deleteWebhook();
+        default:
+          return true;
+      }
+    };
+
+    this.bot.telegram.getMe = getMe as typeof this.bot.telegram.getMe;
+    this.bot.telegram.sendMessage = sendMessage as typeof this.bot.telegram.sendMessage;
+    this.bot.telegram.sendChatAction = sendChatAction as typeof this.bot.telegram.sendChatAction;
+    this.bot.telegram.setWebhook = setWebhook as typeof this.bot.telegram.setWebhook;
+    this.bot.telegram.deleteWebhook = deleteWebhook as typeof this.bot.telegram.deleteWebhook;
+    this.bot.telegram.callApi = callApi as typeof this.bot.telegram.callApi;
   }
 }

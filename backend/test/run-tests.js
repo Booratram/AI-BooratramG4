@@ -258,18 +258,81 @@ async function testDeepseekService() {
   }
 }
 
-async function testEmbeddingsFallback() {
-  const service = new EmbeddingsService(new ConfigService({ EMBEDDING_PROVIDER: 'deepseek' }));
-  const first = await service.embed('BooratramG4 test');
-  const second = await service.embed('BooratramG4 test');
-  const third = await service.embed('Different text');
+async function testEmbeddingsService() {
+  const originalFetch = global.fetch;
 
-  assert.equal(first.length, 1536);
-  assert.deepEqual(first, second);
-  assert.notDeepEqual(first, third);
-  assert.equal(service.getStatus().mode, 'deterministic');
+  try {
+    const deterministic = new EmbeddingsService(createConfig({ EMBEDDING_PROVIDER: 'deterministic' }));
+    const first = await deterministic.embed('BooratramG4 test');
+    const second = await deterministic.embed('BooratramG4 test');
+    const third = await deterministic.embed('Different text');
+
+    assert.equal(first.length, 1536);
+    assert.deepEqual(first, second);
+    assert.notDeepEqual(first, third);
+    assert.equal(deterministic.getStatus().configuredProvider, 'deterministic');
+    assert.equal(deterministic.getStatus().effectiveProvider, 'deterministic');
+    assert.equal(deterministic.getStatus().mode, 'deterministic');
+    assert.match(String(deterministic.getStatus().fallbackReason), /deterministic/);
+
+    let capturedUrl = null;
+    let capturedBody = null;
+    global.fetch = async (url, options) => {
+      capturedUrl = String(url);
+      capturedBody = JSON.parse(options.body);
+      return {
+        ok: true,
+        json: async () => ({
+          data: [{ embedding: [0.1, 0.2, 0.3] }],
+        }),
+      };
+    };
+
+    const auto = new EmbeddingsService(
+      createConfig({
+        EMBEDDING_PROVIDER: 'auto',
+        OPENAI_API_KEY: 'sk-test',
+        OPENAI_EMBEDDING_MODEL: 'text-embedding-3-small',
+        OPENAI_BASE_URL: 'http://127.0.0.1:4011/v1',
+        OPENAI_EMBEDDING_TIMEOUT_MS: '1200',
+      }),
+    );
+
+    const liveVector = await auto.embed('Need live embeddings');
+    assert.deepEqual(liveVector, [0.1, 0.2, 0.3]);
+    assert.equal(capturedUrl, 'http://127.0.0.1:4011/v1/embeddings');
+    assert.equal(capturedBody.model, 'text-embedding-3-small');
+    assert.equal(auto.getStatus().configuredProvider, 'auto');
+    assert.equal(auto.getStatus().effectiveProvider, 'openai');
+    assert.equal(auto.getStatus().live, true);
+    assert.equal(auto.getStatus().mode, 'openai');
+    assert.equal(auto.getStatus().baseUrl, 'http://127.0.0.1:4011/v1');
+
+    global.fetch = async () => ({
+      ok: false,
+      status: 503,
+      json: async () => ({
+        error: { message: 'provider offline' },
+      }),
+    });
+
+    const strict = new EmbeddingsService(
+      createConfig({
+        EMBEDDING_PROVIDER: 'openai',
+        OPENAI_API_KEY: 'sk-test',
+      }),
+    );
+
+    await assert.rejects(() => strict.embed('Need strict mode'), /provider offline/);
+
+    const legacy = new EmbeddingsService(createConfig({ EMBEDDING_PROVIDER: 'deepseek' }));
+    assert.equal(legacy.getStatus().configuredProvider, 'auto');
+    assert.equal(legacy.getStatus().effectiveProvider, 'deterministic');
+    assert.match(String(legacy.getStatus().fallbackReason), /OPENAI_API_KEY/);
+  } finally {
+    global.fetch = originalFetch;
+  }
 }
-
 async function testCalendarParser() {
   const service = new CalendarService(createPrismaMock().prisma);
   const parsed = service.parseNaturalLanguage('созвон с командой в пятницу после обеда по gogigo');
@@ -384,7 +447,7 @@ async function main() {
     ['auth.service', testAuthService],
     ['tenant.guard', testTenantGuard],
     ['ai.deepseek', testDeepseekService],
-    ['ai.embeddings', testEmbeddingsFallback],
+    ['ai.embeddings', testEmbeddingsService],
     ['calendar.parser', testCalendarParser],
     ['deadline.scheduler', testDeadlineScheduler],
     ['telegram.helpers', testTelegramHelpers],
@@ -404,6 +467,8 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
+
 
 
 
