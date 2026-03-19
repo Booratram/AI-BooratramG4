@@ -6,7 +6,7 @@ import { knowledgeHits } from '../../store/demo-data';
 
 export function Knowledge() {
   const { session } = useAuth();
-  const [query, setQuery] = useState('как решали проблему с VK OAuth?');
+  const [query, setQuery] = useState('как мы решали проблему с VK OAuth?');
   const [hits, setHits] = useState(knowledgeHits);
 
   async function search() {
@@ -16,8 +16,8 @@ export function Knowledge() {
       const items = await apiClient.knowledgeSearch(session.accessToken, query);
       setHits(
         items.map((item) => ({
-          title: item.content.split('|')[0]?.trim() || 'Memory hit',
-          similarity: typeof item.similarity === 'number' ? item.similarity.toFixed(2) : 'recent',
+          title: item.content.split('|')[0]?.trim() || 'Фрагмент памяти',
+          similarity: typeof item.similarity === 'number' ? item.similarity.toFixed(2) : 'недавно',
           summary: item.content,
         })),
       );
@@ -28,10 +28,14 @@ export function Knowledge() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
-      <Panel title="Semantic search" eyebrow="Tenant-isolated">
+      <Panel title="Семантический поиск" eyebrow="Изоляция по tenant">
         <div className="flex flex-col gap-3 md:flex-row">
-          <input className="flex-1 rounded-2xl border border-ink/10 px-4 py-3 text-sm" value={query} onChange={(event) => setQuery(event.target.value)} />
-          <button className="rounded-2xl bg-ink px-5 py-3 text-sm font-medium text-white" onClick={search}>Search</button>
+          <input
+            className="flex-1 rounded-2xl border border-ink/10 px-4 py-3 text-sm"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <button className="rounded-2xl bg-ink px-5 py-3 text-sm font-medium text-white" onClick={search}>Найти</button>
         </div>
         <div className="mt-4 space-y-3">
           {hits.map((hit) => (
@@ -46,9 +50,9 @@ export function Knowledge() {
         </div>
       </Panel>
 
-      <Panel title="Isolation contract" eyebrow="Critical rule">
+      <Panel title="Правило изоляции" eyebrow="Критично для платформы">
         <div className="rounded-[24px] bg-ink p-5 text-sm leading-7 text-white/82">
-          Каждый semantic search в backend жёстко фильтруется по <code className="rounded bg-white/10 px-2 py-1 text-white">tenantId</code>. Память одного клиента не может попасть в выдачу другого.
+          Каждый семантический поиск в backend жёстко фильтруется по <code className="rounded bg-white/10 px-2 py-1 text-white">tenantId</code>. Память одной компании не может попасть в выдачу другой.
         </div>
       </Panel>
     </div>

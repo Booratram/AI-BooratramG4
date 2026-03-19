@@ -25,7 +25,7 @@ export class AuthService {
     const passwordMatches = await argon2.verify(user.password, dto.password);
 
     if (!passwordMatches) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Неверный email или пароль');
     }
 
     return this.issueTokens(user, meta);
@@ -115,7 +115,7 @@ export class AuthService {
     const sessionId = this.extractSessionId(refreshToken);
 
     if (!sessionId) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Некорректный refresh token');
     }
 
     const session = await this.prisma.refreshToken.findUnique({
@@ -130,13 +130,13 @@ export class AuthService {
     });
 
     if (!session || session.revokedAt || session.expiresAt <= new Date()) {
-      throw new UnauthorizedException('Refresh session expired');
+      throw new UnauthorizedException('Сессия обновления истекла');
     }
 
     const tokenMatches = await argon2.verify(session.tokenHash, refreshToken);
 
     if (!tokenMatches || !session.user.isActive) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Некорректный refresh token');
     }
 
     return {
@@ -158,7 +158,7 @@ export class AuthService {
       });
 
       if (!user || !user.isActive) {
-        throw new UnauthorizedException('Invalid credentials');
+        throw new UnauthorizedException('Неверный email или пароль');
       }
 
       return user;
@@ -176,7 +176,7 @@ export class AuthService {
     });
 
     if (matches.length !== 1) {
-      throw new UnauthorizedException('tenantSlug is required for this user');
+      throw new UnauthorizedException('Для этого пользователя нужно указать slug компании');
     }
 
     return matches[0];
@@ -210,4 +210,3 @@ export class AuthService {
     return new Date(date.getTime() + value * multipliers[unit]);
   }
 }
-

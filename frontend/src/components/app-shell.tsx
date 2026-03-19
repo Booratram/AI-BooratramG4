@@ -44,8 +44,8 @@ export function AppShell({ brand, title, subtitle, navItems, accent, children }:
             ))}
           </nav>
           <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-5 text-sm text-white/75">
-            <div className="font-display text-lg text-white">Memory-first operations</div>
-            <p className="mt-2">Каждый новый кейс расширяет контекст ответа и делает G4 точнее в следующем решении.</p>
+            <div className="font-display text-lg text-white">Память и операционная работа</div>
+            <p className="mt-2">Каждый новый кейс, проект и дедлайн расширяет контекст ответа и делает G4 точнее в следующем решении.</p>
           </div>
         </aside>
 
@@ -57,8 +57,8 @@ export function AppShell({ brand, title, subtitle, navItems, accent, children }:
                 <p className="mt-1 max-w-3xl text-sm text-ink/60">{subtitle}</p>
               </div>
               <div className="flex flex-wrap gap-3 text-sm">
-                <div className="rounded-full border border-ink/10 bg-sand px-4 py-2">Pilot tenant live</div>
-                <div className="rounded-full border border-ink/10 bg-white px-4 py-2">DeepSeek core</div>
+                <div className="rounded-full border border-ink/10 bg-sand px-4 py-2">Русскоязычный рабочий контур</div>
+                <div className="rounded-full border border-ink/10 bg-white px-4 py-2">AI-ядро DeepSeek</div>
               </div>
             </div>
             <div className="mt-4 grid gap-2 lg:hidden">

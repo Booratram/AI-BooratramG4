@@ -3,6 +3,7 @@ import { apiClient } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { MetricCard } from '../../components/metric-card';
 import { Panel } from '../../components/panel';
+import { translatePriority, translateProjectStatus } from '../../lib/labels';
 import { dashboardMetrics, deadlines as fallbackDeadlines, projects as fallbackProjects } from '../../store/demo-data';
 
 export function Dashboard() {
@@ -30,24 +31,24 @@ export function Dashboard() {
 
         setTenantName(tenant.name);
         setMetrics([
-          { label: 'Projects', value: String(projectItems.length), hint: 'Текущий tenant scope' },
-          { label: 'Cases', value: String(caseItems.length), hint: 'В базе знаний тенанта' },
-          { label: 'Deadlines', value: String(deadlineItems.length), hint: 'Открытые дедлайны' },
-          { label: 'Brain', value: tenant.brainName, hint: `Language: ${tenant.language}` },
+          { label: 'Проекты', value: String(projectItems.length), hint: 'Активный контур компании' },
+          { label: 'Кейсы', value: String(caseItems.length), hint: 'База знаний и памяти' },
+          { label: 'Дедлайны', value: String(deadlineItems.length), hint: 'Текущие обязательства' },
+          { label: 'AI-ядро', value: tenant.brainName, hint: `Язык: ${tenant.language}` },
         ]);
         setProjects(
           projectItems.map((item) => ({
             name: item.name,
-            status: item.status,
-            summary: item.description ?? 'No description yet',
-            progress: `${Math.min(item.priority * 20, 100)}%`,
+            status: translateProjectStatus(item.status),
+            summary: item.description ?? 'Описание проекта пока не заполнено.',
+            progress: `Приоритет ${item.priority}/5`,
           })),
         );
         setDeadlines(
           deadlineItems.map((item) => ({
             title: item.title,
-            due: new Date(item.dueAt).toLocaleString(),
-            priority: item.priority,
+            due: new Date(item.dueAt).toLocaleString('ru-RU'),
+            priority: translatePriority(item.priority),
             note: item.description ?? item.status,
           })),
         );
@@ -71,16 +72,16 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr,1fr]">
-        <Panel title="Daily briefing" eyebrow="AI brain">
+        <Panel title="Ежедневная сводка" eyebrow="AI-обзор">
           <div className="rounded-[24px] bg-ink p-6 text-white">
             <div className="text-sm text-white/60">{tenantName}</div>
             <div className="mt-3 max-w-2xl text-lg leading-8">
-              Панель уже готова к работе от реального API. Как только инфраструктура поднимется, здесь будут живые проекты, кейсы и дедлайны выбранного tenant.
+              Платформа уже работает от реального API. Добавляйте проекты, кейсы, дедлайны и знания компании, и BooratramG4 начнёт опираться на ваши реальные данные.
             </div>
           </div>
         </Panel>
 
-        <Panel title="Priority deadlines" eyebrow="Today">
+        <Panel title="Приоритетные дедлайны" eyebrow="Сегодня">
           <div className="space-y-3">
             {deadlines.map((item) => (
               <div key={item.title} className="rounded-2xl border border-ink/10 p-4">
@@ -96,7 +97,7 @@ export function Dashboard() {
         </Panel>
       </div>
 
-      <Panel title="Project pulse" eyebrow="Operations">
+      <Panel title="Пульс проектов" eyebrow="Операционная работа">
         <div className="grid gap-4 md:grid-cols-3">
           {projects.map((project) => (
             <div key={project.name} className="rounded-[24px] border border-ink/10 p-5">

@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { apiClient } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { Panel } from '../../components/panel';
+import { translateEventType } from '../../lib/labels';
 
 const fallbackEvents = [
-  { time: '10:00', title: 'Архитектурный проход по G4 backend', type: 'Review' },
-  { time: '14:00', title: 'Созвон по ai-publisher после обеда', type: 'Meeting' },
-  { time: '17:30', title: 'Обновить pitch для BG Studio AI', type: 'Work block' },
+  { time: '10:00', title: 'Архитектурный проход по G4 backend', type: 'Ревью' },
+  { time: '14:00', title: 'Созвон по ai-publisher после обеда', type: 'Встреча' },
+  { time: '17:30', title: 'Обновить pitch для BG Studio AI', type: 'Фокус-блок' },
 ];
 
 export function Calendar() {
@@ -30,9 +31,9 @@ export function Calendar() {
 
         setEvents(
           eventItems.map((item) => ({
-            time: new Date(item.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            time: new Date(item.startAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
             title: item.title,
-            type: item.type,
+            type: translateEventType(item.type),
           })),
         );
         setRecommendation(suggestion.recommendation);
@@ -49,7 +50,7 @@ export function Calendar() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
-      <Panel title="Week planner" eyebrow="Smart scheduling">
+      <Panel title="План на неделю" eyebrow="Умное планирование">
         <div className="space-y-3">
           {events.map((event) => (
             <div key={`${event.time}-${event.title}`} className="flex items-center justify-between rounded-2xl border border-ink/10 px-4 py-4">
@@ -63,7 +64,7 @@ export function Calendar() {
         </div>
       </Panel>
 
-      <Panel title="Scheduling recommendation" eyebrow="From API">
+      <Panel title="Рекомендация по расписанию" eyebrow="Подсказка от API">
         <div className="rounded-[24px] bg-sand p-5 text-sm leading-7 text-ink/75">{recommendation}</div>
       </Panel>
     </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiClient, type BrainStatus, type ChatMessage } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { Panel } from '../../components/panel';
+import { translateEmbeddingMode } from '../../lib/labels';
 import { brainMessages } from '../../store/demo-data';
 
 const initialMessages: ChatMessage[] = brainMessages.map((message) => ({
@@ -37,7 +38,7 @@ export function Brain() {
       })
       .catch((error) => {
         if (!cancelled) {
-          setStatusError(error instanceof Error ? error.message : 'Failed to load AI status');
+          setStatusError(error instanceof Error ? error.message : 'Не удалось загрузить статус AI');
         }
       });
 
@@ -72,7 +73,7 @@ export function Brain() {
         ...history,
         {
           role: 'assistant',
-          content: error instanceof Error ? error.message : 'Brain request failed',
+          content: error instanceof Error ? error.message : 'Ошибка запроса к AI',
         },
       ]);
     } finally {
@@ -82,21 +83,20 @@ export function Brain() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.3fr,0.9fr]">
-      <Panel title="Chat with G4" eyebrow="Context-aware agent">
+      <Panel title="Диалог с G4" eyebrow="Контекстный AI-ассистент">
         <div className="space-y-4">
           {brainStatus ? (
             <div className="rounded-[22px] border border-ink/10 bg-white px-5 py-4 text-sm leading-7 text-ink/75">
               <div>
-                DeepSeek: {brainStatus.deepseek.available ? 'connected' : 'not configured'} · chat model:{' '}
-                {brainStatus.deepseek.model}
+                DeepSeek: {brainStatus.deepseek.available ? 'подключен' : 'не настроен'} · чат-модель: {brainStatus.deepseek.model}
               </div>
               <div>
-                Reasoner: {brainStatus.deepseek.reasonerModel} · embeddings: {brainStatus.embeddings.mode}
-                {' '}({brainStatus.embeddings.effectiveProvider})
+                Reasoner: {brainStatus.deepseek.reasonerModel} · эмбеддинги: {translateEmbeddingMode(brainStatus.embeddings.mode)}
+                {' '}({translateEmbeddingMode(brainStatus.embeddings.effectiveProvider)})
               </div>
               <div>
-                Embedding config: {brainStatus.embeddings.configuredProvider}
-                {brainStatus.embeddings.model ? ` · model: ${brainStatus.embeddings.model}` : ''}
+                Конфигурация эмбеддингов: {translateEmbeddingMode(brainStatus.embeddings.configuredProvider)}
+                {brainStatus.embeddings.model ? ` · модель: ${brainStatus.embeddings.model}` : ''}
               </div>
               {brainStatus.embeddings.fallbackReason ? (
                 <div className="text-coral">Fallback: {brainStatus.embeddings.fallbackReason}</div>
@@ -119,7 +119,7 @@ export function Brain() {
             </div>
           ))}
           <div className="mt-6 rounded-[26px] border border-ink/10 bg-white p-4">
-            <div className="text-sm text-ink/45">Prompt input</div>
+            <div className="text-sm text-ink/45">Поле запроса</div>
             <div className="mt-3 flex flex-col gap-3 md:flex-row">
               <input
                 className="flex-1 rounded-2xl border border-ink/10 px-4 py-3 outline-none"
@@ -131,26 +131,26 @@ export function Brain() {
                 disabled={loading}
                 onClick={send}
               >
-                {loading ? 'Thinking...' : 'Send'}
+                {loading ? 'Думаю...' : 'Отправить'}
               </button>
             </div>
             {lastMeta ? (
               <div className="mt-3 text-xs text-ink/45">
-                Model: {lastMeta.model ?? 'n/a'} · memories: {lastMeta.memoriesUsed} · reasoner:{' '}
-                {lastMeta.usedReasoner ? 'on' : 'off'} · embeddings: {lastMeta.embeddingMode}
+                Модель: {lastMeta.model ?? 'n/a'} · память: {lastMeta.memoriesUsed} · reasoner:{' '}
+                {lastMeta.usedReasoner ? 'включен' : 'выключен'} · эмбеддинги: {translateEmbeddingMode(lastMeta.embeddingMode)}
               </div>
             ) : null}
           </div>
         </div>
       </Panel>
 
-      <Panel title="Agent contract" eyebrow="Pilot rules">
+      <Panel title="Контракт AI-ассистента" eyebrow="Правила пилота">
         <ul className="space-y-3 text-sm leading-7 text-ink/75">
           <li>Отвечать на русском языке и без воды.</li>
-          <li>Всегда учитывать кейсы пилотного тенанта перед рекомендацией.</li>
+          <li>Всегда учитывать кейсы и память компании перед рекомендацией.</li>
           <li>Для аналитических запросов автоматически включать DeepSeek reasoner.</li>
-          <li>Память диалогов сохранять как tenant-isolated knowledge.</li>
-          <li>Если ответ приводит к действию, завершать конкретным next step.</li>
+          <li>Сохранять память диалогов как изолированную базу знаний компании.</li>
+          <li>Если ответ приводит к действию, завершать конкретным следующим шагом.</li>
         </ul>
       </Panel>
     </div>

@@ -121,7 +121,7 @@ async function testAuthService() {
 
   await assert.rejects(
     () => duplicateService.login({ email: 'same@example.com', password: 'password123' }),
-    /tenantSlug is required/,
+    /нужно указать slug компании/,
   );
 
   const mock = createPrismaMock();

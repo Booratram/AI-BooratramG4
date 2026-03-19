@@ -18,6 +18,16 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface ProjectRecord {
+  id: string;
+  name: string;
+  status: string;
+  description?: string;
+  priority: number;
+  startDate?: string;
+  targetDate?: string;
+}
+
 export interface BrainStatus {
   deepseek: {
     available: boolean;
@@ -98,12 +108,33 @@ export const apiClient = {
     );
   },
   listProjects(token: string) {
-    return request<
-      Array<{ id: string; name: string; status: string; description?: string; priority: number }>
-    >('/projects', {}, token);
+    return request<ProjectRecord[]>('/projects', {}, token);
+  },
+  createProject(
+    token: string,
+    payload: {
+      name: string;
+      description?: string;
+      priority?: number;
+      startDate?: string;
+      targetDate?: string;
+    },
+  ) {
+    return request<ProjectRecord>(
+      '/projects',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      token,
+    );
   },
   listCases(token: string) {
-    return request<Array<{ id: string; title: string; category: string; impact?: number; lessons?: string }>>('/cases', {}, token);
+    return request<Array<{ id: string; title: string; category: string; impact?: number; lessons?: string }>>(
+      '/cases',
+      {},
+      token,
+    );
   },
   listDeadlines(token: string) {
     return request<

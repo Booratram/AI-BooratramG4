@@ -5,16 +5,16 @@ import { MetricCard } from '../../components/metric-card';
 import { Panel } from '../../components/panel';
 
 const fallbackMetrics = [
-  { label: 'Tenants', value: '3', hint: '1 pilot, 2 pipeline tenants' },
-  { label: 'Cases / month', value: '67', hint: 'Knowledge base growth' },
-  { label: 'DAU', value: '12', hint: 'Combined tenant activity' },
-  { label: 'Avg response', value: '1.2s', hint: 'Current AI service target' },
+  { label: 'Тенанты', value: '3', hint: '1 пилот, 2 воронка' },
+  { label: 'Кейсы / месяц', value: '67', hint: 'Рост базы знаний' },
+  { label: 'DAU', value: '12', hint: 'Суммарная активность' },
+  { label: 'Средний ответ', value: '1.2s', hint: 'Целевой SLA AI' },
 ];
 
 export function Analytics() {
   const { session } = useAuth();
   const [metrics, setMetrics] = useState(fallbackMetrics);
-  const [industries, setIndustries] = useState<string[]>(['AI / IT services']);
+  const [industries, setIndustries] = useState<string[]>(['AI / IT услуги']);
 
   useEffect(() => {
     let active = true;
@@ -27,10 +27,10 @@ export function Analytics() {
         if (!active) return;
 
         setMetrics([
-          { label: 'Tenants', value: String(item.totalTenants), hint: `${item.activeTenants} active` },
-          { label: 'Cases / month', value: String(item.casesThisMonth), hint: `Total ${item.totalCases}` },
-          { label: 'AI requests', value: String(item.totalAiRequests), hint: 'Logged requests' },
-          { label: 'Avg response', value: `${item.avgResponseTime}ms`, hint: 'Based on aiRequestLog' },
+          { label: 'Тенанты', value: String(item.totalTenants), hint: `${item.activeTenants} активных` },
+          { label: 'Кейсы / месяц', value: String(item.casesThisMonth), hint: `Всего ${item.totalCases}` },
+          { label: 'AI-запросы', value: String(item.totalAiRequests), hint: 'Записано в журнал' },
+          { label: 'Средний ответ', value: `${item.avgResponseTime}ms`, hint: 'По aiRequestLog' },
         ]);
         setIndustries(item.topIndustries);
       } catch {
@@ -51,11 +51,11 @@ export function Analytics() {
           <MetricCard key={metric.label} {...metric} />
         ))}
       </div>
-      <Panel title="Platform interpretation" eyebrow="Admin readout">
+      <Panel title="Интерпретация платформы" eyebrow="Админский срез">
         <div className="grid gap-4 md:grid-cols-3 text-sm text-ink/72">
-          <div className="rounded-[24px] border border-ink/10 p-5">Top industries: {industries.join(', ') || 'No data yet'}</div>
-          <div className="rounded-[24px] border border-ink/10 p-5">Fastest growth driver: seeded cases from pilot tenant</div>
-          <div className="rounded-[24px] border border-ink/10 p-5">Current bottleneck: onboarding automation and integrations</div>
+          <div className="rounded-[24px] border border-ink/10 p-5">Ключевые отрасли: {industries.join(', ') || 'Данных пока нет'}</div>
+          <div className="rounded-[24px] border border-ink/10 p-5">Главный драйвер роста: кейсы и память пилотного тенанта</div>
+          <div className="rounded-[24px] border border-ink/10 p-5">Текущее узкое место: автоматизация онбординга и интеграций</div>
         </div>
       </Panel>
     </div>

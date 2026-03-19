@@ -15,26 +15,26 @@ import { RequireAuth } from './auth/require-auth';
 import { AppShell, type NavItem } from './components/app-shell';
 
 const clientNav: NavItem[] = [
-  { label: 'Dashboard', to: '/client/dashboard' },
-  { label: 'Brain', to: '/client/brain' },
-  { label: 'Calendar', to: '/client/calendar' },
-  { label: 'Projects', to: '/client/projects' },
-  { label: 'Cases', to: '/client/cases' },
-  { label: 'Knowledge', to: '/client/knowledge' },
+  { label: 'Сводка', to: '/client/dashboard' },
+  { label: 'Мозг', to: '/client/brain' },
+  { label: 'Календарь', to: '/client/calendar' },
+  { label: 'Проекты', to: '/client/projects' },
+  { label: 'Кейсы', to: '/client/cases' },
+  { label: 'Знания', to: '/client/knowledge' },
 ];
 
 const adminNav: NavItem[] = [
-  { label: 'Tenants', to: '/admin/tenants' },
-  { label: 'Analytics', to: '/admin/analytics' },
-  { label: 'Onboarding', to: '/admin/onboarding' },
+  { label: 'Тенанты', to: '/admin/tenants' },
+  { label: 'Аналитика', to: '/admin/analytics' },
+  { label: 'Онбординг', to: '/admin/onboarding' },
 ];
 
 function ClientLayout() {
   return (
     <AppShell
       brand="BooratramG4"
-      title="BG Studio AI Pilot"
-      subtitle="AI Business Brain для ежедневной операционной работы, кейсов и дедлайнов"
+      title="Операционный центр компании"
+      subtitle="Русскоязычный AI-контур для проектов, дедлайнов, кейсов и управленческих решений"
       navItems={clientNav}
       accent="coral"
     >
@@ -47,8 +47,8 @@ function AdminLayout() {
   return (
     <AppShell
       brand="BG Studio AI"
-      title="Platform Admin"
-      subtitle="Суперадмин-контур для тенантов, аналитики и онбординга"
+      title="Администрирование платформы"
+      subtitle="Управление тенантами, аналитикой платформы и сценариями онбординга"
       navItems={adminNav}
       accent="moss"
     >

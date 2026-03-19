@@ -5,8 +5,8 @@ import { useAuth } from '../auth/auth-context';
 export function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [email, setEmail] = useState('pilot-admin@bg-studio.ai');
-  const [password, setPassword] = useState('change-me');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [tenantSlug, setTenantSlug] = useState('bg-studio-ai');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -20,7 +20,7 @@ export function Login() {
       const session = await login({ email, password, tenantSlug });
       navigate(session.user.role === 'SUPER_ADMIN' ? '/admin/tenants' : '/client/dashboard', { replace: true });
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Login failed');
+      setError(nextError instanceof Error ? nextError.message : 'Не удалось выполнить вход');
     } finally {
       setLoading(false);
     }
@@ -30,31 +30,47 @@ export function Login() {
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-[28px] border border-ink/10 bg-white p-8 shadow-card">
         <div className="inline-flex rounded-full bg-coral px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white">
-          BooratramG4 Login
+          Вход в BooratramG4
         </div>
-        <h1 className="mt-4 font-display text-4xl font-semibold text-ink">Sign in to the pilot</h1>
+        <h1 className="mt-4 font-display text-4xl font-semibold text-ink">Вход в рабочий контур</h1>
         <p className="mt-3 text-sm leading-7 text-ink/65">
-          Seeded dev account is prefilled. After infrastructure is live, this screen works against the real backend API.
+          Введите данные вашей учётной записи. Поле slug компании нужно для входа в конкретный tenant.
         </p>
 
         <form className="mt-8 space-y-4" onSubmit={onSubmit}>
           <label className="block text-sm text-ink/70">
             Email
-            <input className="mt-2 w-full rounded-2xl border border-ink/10 px-4 py-3" value={email} onChange={(event) => setEmail(event.target.value)} />
+            <input
+              className="mt-2 w-full rounded-2xl border border-ink/10 px-4 py-3"
+              placeholder="name@company.ru"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </label>
           <label className="block text-sm text-ink/70">
-            Password
-            <input className="mt-2 w-full rounded-2xl border border-ink/10 px-4 py-3" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            Пароль
+            <input
+              className="mt-2 w-full rounded-2xl border border-ink/10 px-4 py-3"
+              type="password"
+              placeholder="Введите пароль"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
           </label>
           <label className="block text-sm text-ink/70">
-            Tenant slug
-            <input className="mt-2 w-full rounded-2xl border border-ink/10 px-4 py-3" value={tenantSlug} onChange={(event) => setTenantSlug(event.target.value)} />
+            Slug компании
+            <input
+              className="mt-2 w-full rounded-2xl border border-ink/10 px-4 py-3"
+              placeholder="bg-studio-ai"
+              value={tenantSlug}
+              onChange={(event) => setTenantSlug(event.target.value)}
+            />
           </label>
 
           {error ? <div className="rounded-2xl bg-coral/10 px-4 py-3 text-sm text-coral">{error}</div> : null}
 
           <button className="w-full rounded-2xl bg-ink px-5 py-3 font-medium text-white" disabled={loading} type="submit">
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Входим...' : 'Войти'}
           </button>
         </form>
       </div>

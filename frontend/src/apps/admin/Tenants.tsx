@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiClient } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { Panel } from '../../components/panel';
+import { translatePlan, translateTenantStatus } from '../../lib/labels';
 import { adminTenants as fallbackTenants } from '../../store/demo-data';
 
 export function Tenants() {
@@ -23,8 +24,8 @@ export function Tenants() {
           items.map((tenant) => ({
             id: tenant.id,
             name: tenant.name,
-            plan: tenant.plan,
-            status: tenant.status,
+            plan: translatePlan(tenant.plan),
+            status: translateTenantStatus(tenant.status),
             cases: tenant._count?.cases ?? 0,
             memories: tenant._count?.memories ?? 0,
             users: tenant._count?.users ?? 0,
@@ -42,7 +43,7 @@ export function Tenants() {
   }, [session]);
 
   return (
-    <Panel title="Platform tenants" eyebrow="BG Studio AI admin">
+    <Panel title="Тенанты платформы" eyebrow="Контур администратора BG Studio AI">
       <div className="space-y-3">
         {tenants.map((tenant) => (
           <Link
@@ -53,12 +54,12 @@ export function Tenants() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <div className="font-display text-2xl text-ink">{tenant.name}</div>
-                <div className="mt-2 text-sm text-ink/60">{tenant.plan} plan · {tenant.status}</div>
+                <div className="mt-2 text-sm text-ink/60">Тариф: {tenant.plan} · Статус: {tenant.status}</div>
               </div>
               <div className="grid grid-cols-3 gap-3 text-sm text-ink/65">
-                <div>{tenant.cases} cases</div>
-                <div>{tenant.memories} memories</div>
-                <div>{tenant.users} users</div>
+                <div>{tenant.cases} кейсов</div>
+                <div>{tenant.memories} памяти</div>
+                <div>{tenant.users} пользователей</div>
               </div>
             </div>
           </Link>
