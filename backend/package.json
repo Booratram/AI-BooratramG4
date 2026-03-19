@@ -13,7 +13,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:status": "prisma migrate status",
     "prisma:seed": "node prisma/seed.js",
-    "embeddings:backfill": "tsx scripts/backfill-embeddings.ts"
+    "embeddings:backfill": "tsx scripts/backfill-embeddings.ts",
+    "company:bootstrap": "node scripts/bootstrap-company.js"
   },
   "dependencies": {
     "@nestjs/bull": "^11.0.4",
